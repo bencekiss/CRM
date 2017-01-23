@@ -38,7 +38,7 @@ class CRM
     when 2
       Contact.modify
     when 3
-      Contact.delete
+      Contact.delete_versions
     when 4
       Contact.display_contacts
     when 5

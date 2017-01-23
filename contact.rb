@@ -1,4 +1,5 @@
 require_relative './crm.rb'
+require 'pry'
 
 class Contact
   attr_accessor :first_name, :last_name, :email, :note
@@ -13,7 +14,7 @@ class Contact
 
   def self.create(first_name, last_name, email, note)
     # 1. initialize a new contact w a unique id
-    new_contact = self.new(first_name, last_name, email, note)
+    new_contact = new(first_name, last_name, email, note)
     # 2. add the new contact to the list of all contact
     @@all_contacts << new_contact
     # 3. Increment the next unique id
@@ -71,6 +72,16 @@ class Contact
 #
 # Modify method: finds a contact in the @@all_contacts and modifies it.
 
+  def update(attribute, value)
+    attribute = attribute + "="
+    @@all_contacts.each do |contact|
+      if contact.id == self.id
+        contact.send(attribute, value)
+        return value
+      end
+    end
+  end
+
   def self.modify
     puts "Please enter the ID of the contact you want to modify"
     puts "If you want to go back to the main menu, hit #."
@@ -83,7 +94,7 @@ class Contact
 
     @@all_contacts.each do |c|
       if c.id == input
-# Modifies its attribute to be precise.
+        # Modifies its attribute to be precise.
         self.modify_attribute(c)
         return c
       end
@@ -106,66 +117,33 @@ class Contact
     end
     mod = mod.to_i
 
-# There is a way to make this work with the send command
-# though since there is an escape route if user misclicks
-# case is the choice. More coding...
+    # There is a way to make this work with the send command
+    # though since there is an escape route if user misclicks
+    # case is the choice. More coding...
 
     case mod
     when 1
-      puts "Please type the new first name."
-      puts "If you want to go back to the previous screen, hit #"
-      fn = gets.chomp
-      case fn
-      when "#"
-        self.modify_attribute(c)
-      else
-        c.first_name = fn
-        puts "The new first name for contact #{ c.id } is #{ fn }."
-      end
+      to_send = "first_name"
     when 2
-      puts "Please type the new last name."
-      puts "If you want to go back to the previous screen, hit #"
-      fn = gets.chomp
-      case fn
-      when "#"
-        self.modify_attribute(c)
-      else
-        c.last_name = fn
-        puts "The new last name for contact #{ c.id } is #{ fn }."
-      end
+      to_send = "last_name"
     when 3
-      puts "Please type the new email address."
-      puts "If you want to go back to the previous screen, hit #"
-      fn = gets.chomp
-      case fn
-      when "#"
-        self.modify_attribute(c)
-      else
-        c.email = fn
-        puts "The new email for contact #{ c.id } is #{ fn }."
-      end
+      to_send = "email"
     when 4
-      puts "Please type the new note."
-      puts "If you want to go back to the previous screen, hit #"
-      fn = gets.chomp
-      case fn
-      when "#"
-        self.modify_attribute(c)
-      else
-        c.note = fn
-        puts "The new note for contact #{ c.id } is #{ fn }."
-      end
+      to_send = "note"
     else
       puts "Please give me one of the numbers in the 1..4 range."
       self.modify_attribute(c)
     end
+    puts "Please give me the new value of #{ to_send }."
+    value = gets.chomp
+    c.update(to_send, value)
     return c
   end
 
 # delete method, where the user can decide if the whole system has to be erased, or just one contact
 
 
-  def self.delete
+  def self.delete_versions
     puts "[ 1 ] Delete every contact that ever existed."
     puts "[ 2 ] Delete one contact"
     puts "[ # ] Go back"
@@ -178,7 +156,12 @@ class Contact
     when 1
       self.delete_all
     when 2
-      self.delete_one
+      c = self.search_by_attribute
+      if c
+        c.delete
+      else
+        c
+      end
     end
 
     return @@all_contacts
@@ -191,33 +174,8 @@ class Contact
     @@all_contacts = []
 
   end
-  def self.delete_one
-    puts "Do you know the ID of the item you want to delete?"
-    puts "[ yes ]"
-    puts "[ no ]"
-    answer = gets.chomp.downcase
-    if answer == "yes"
-      puts "Please give me the ID of the contact you want to delete."
-      id = gets.chomp.to_i
-
-    else
-      watch = self.search_by_attribute
-      if watch
-        id = watch.id
-      else
-        return nil
-      end
-    end
-
-    @@all_contacts.each do |contact|
-      if contact.id == id
-# since the Contact class only keeps record of the instances in the @@all_contacts variable
-# there is no need to erase every instance, only from that array
-        @@all_contacts.delete(contact)
-      end
-    end
-    self.display_contacts
-    return @@all_contacts
+  def delete
+    @@all_contacts.delete(self)
   end
 
 
@@ -248,28 +206,29 @@ class Contact
     end
     puts "Please give me the exact expression you want me to search in #{ to_send }s!"
     search_for = gets.chomp
-    result = self.find(to_send, search_for)
-    if result.empty?
+    result = self.find_by(to_send, search_for)
+    if result == false
       puts "Couldn't find it, try another search!"
       gets
       self.search_by_attribute
     else
-      puts "Is the result among the above?"
+      puts "Is this what you were searching for?"
       puts "[ yes ]"
       puts "[ no ]"
       among = gets.chomp.downcase
       if among == "yes"
-        puts "Then give me the id of the contact you were looking for"
-        id = gets.chomp.to_i
-
-        result.each do |contact|
-          if contact.id == id
-            contact.display
-            puts "[ Enter ] Get to the main screen"
-            gets
-            return contact
-          end
-        end
+        return result
+        # puts "Then give me the id of the contact you were looking for"
+        # id = gets.chomp.to_i
+        #
+        # result.each do |contact|
+        #   if contact.id == id
+        #     contact.display
+        #     puts "[ Enter ] Get to the main screen"
+        #     gets
+        #     return contact
+        #   end
+        # end
       else
         puts "[ Enter ] Then try another search!"
         gets
@@ -279,23 +238,23 @@ class Contact
   end
 
 # find (attribute im searching in, phrase im looking for)
-  def self.find(at, sf)
-    contacts_true = []
+  def self.find(id)
     @@all_contacts.each do |contact|
-      if contact.send(at) == sf
-        contacts_true << contact
+      if contact.id == id
+        return contact
       end
     end
-    if contacts_true.empty?
-      puts "I'm sorry, but I couldn't find #{ sf } in the set of #{ at }."
+    contact = nil
+  end
 
-    else
-      contacts_true.each do |cc|
-        cc.display
+  def self.find_by(att, sf)
+    @@all_contacts.each do |contact|
+      if contact.send(att) == sf
+        contact.display
+        return contact
       end
     end
-
-    return contacts_true
+    contact = nil
   end
 
   def display
